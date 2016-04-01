@@ -1,0 +1,38 @@
+#content {
+  margin: auto;
+  width: 500px;
+}
+
+$stripeTag: 'ul';
+$stripeItemTag: 'li';
+
+.ss-wrapper {
+  border: solid 1px red; //***
+
+  position: relative;
+  height: 15rem;
+
+  img {
+    vertical-align: top; //*
+  }
+
+  > #{$stripeTag} {
+    background: gray; //***
+
+    float: left;
+    position: relative;
+    margin: 0; //*
+    padding: 0; //*
+    list-style: none;
+
+    > #{$stripeItemTag} {
+      float: left;
+    }
+  }
+}
+
+.ss-prev, .ss-next {
+  &:hover {
+    cursor: pointer;
+  }
+}

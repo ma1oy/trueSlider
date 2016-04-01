@@ -1,0 +1,24 @@
+#content {
+  margin: auto;
+  width: 500px; }
+
+.ss-wrapper {
+  border: solid 1px red;
+  position: relative;
+  height: 15rem; }
+  .ss-wrapper img {
+    vertical-align: top; }
+  .ss-wrapper > ul {
+    background: gray;
+    float: left;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none; }
+    .ss-wrapper > ul > li {
+      float: left; }
+
+.ss-prev:hover, .ss-next:hover {
+  cursor: pointer; }
+
+/*# sourceMappingURL=ss.css.map */
