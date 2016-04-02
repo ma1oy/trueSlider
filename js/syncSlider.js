@@ -6,6 +6,7 @@
         style: 'ss-slider',
         vertical: false,
         infinite: false,
+        reverse: false,//true,
         sync: false,
         switchTime: 1000,
         showTime: 1000,
@@ -131,14 +132,30 @@
             if (s.infinite) {
                 // Will do this in the future
             } else {
-                var last = N - o.display;
-                var limit = o.step + (o.step > 0 ? last : 1);
-                calci = function() { i = i < limit ? last : 0; };
+                var last = N - o.display,
+                    fix = last < Math.abs(o.step) ? 0 : o.step % last;
+
+                dir = o.step < 0 ? -1 : 1;
+                o.step = dir * o.step > last ? dir * last : o.step;
+
+                if (o.reverse) {
+                    calci = fix ? function() {
+                        i = dir > 0 ? last - o.step * (i == last + o.step) : -o.step * (i == o.step);
+                        o.step *= -1;
+                    } :
+                        function() { i -= 2 * o.step; o.step *= -1; };
+                }
+                else {
+                    var lim = o.step > 0 ? last : 1;
+                    var end = o.step < 0 ? last : 0;
+                    calci = fix ? function() { i = o.step > i - lim ? last : 0; } :
+                        function() { i = end; };
+                }
             }
 
             s.css(side, -slideSize * i + '%'); // set stripe start position
-            s.css(size,  slideSize * N + '%'); // set new stripe size
-            a.css(size,        100 / N + '%'); // set new stripe items sizes
+            s.css(size,  slideSize * N + '%'); // set stripe size
+            a.css(size,        100 / N + '%'); // set stripe items sizes
 
             // Set time for show and animation
             wait = function() {  return o.switchTime + o.showTime };
@@ -150,7 +167,7 @@
             } : setSlide;
 
             // Auto play
-            if (o.autoStart) r.play();
+            o.autoStart ? r.play() : 0;
         }
 
         function setSlide(v) {
@@ -162,7 +179,6 @@
 
             // movement in a certain direction
             pos[side] = -slideSize * i + '%';
-            console.log('move' + i);
             // switch animation
             s.animate(pos, o.switchTime, 'swing');
             // Here will be another system of animation
