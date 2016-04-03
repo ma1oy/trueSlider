@@ -1,5 +1,12 @@
 ;+function($) {
 
+    $.extend($.easing, {
+        easeInOutCubic: function (x, t, b, c, d) {
+            if ((t/=d/2) < 1) return c/2*t*t*t + b;
+            return c/2*((t-=2)*t*t + 2) + b;
+        }
+    });
+
     var defaults = {
 
         // GENERAL
@@ -10,7 +17,7 @@
         sync: false,
         switchTime: 1000,
         showTime: 1000,
-        // easing: 'swing',//'easeInOutCubic',
+        animation: 'easeInOutCubic',//'easeOutBounce',//'swing',
         startSlide: 1,
         display: 4,
         step: 2,
@@ -37,13 +44,13 @@
         },
 
         pager: {
-            create: false,
+            create: true,
             tag: 'nav',
             itemTag: 'a',
             style: 'ss-pager',
             vertical: false,
-            autoSize: true,
-            numbers: false,
+            stretch: true,
+            numbers: true,
             activeStyle: '-active'
         },
 
@@ -54,65 +61,58 @@
 
     $.fn.syncSlider = function(userSettings) {
 
-        var t = $(this),
-            o, // all options
+        var _ = $(this),
+            _h = 'height',
+            _w = 'width',
             r = {}, // object for return
-            s, // stripe
-            i, // current slide
+            m = {}, // top / left movement object
+            o, // all options
+            t, // tape
+            p, // pager
+            i, // current slide index
             n, // source slides number
             N, // all slides number
-            slideSize, // slide width / height
-            calci, // function for i calculation
+            x, // movement step
+            d, // forward / backward direction (1, -1)
+            tis, // tape item size (width / height)
+            I, // previous i
+            calc, // function for i calculation
             wait, // wait time for show and animation
-            timeout, // setTimeout function
-            dir, // forward / backward direction
-            pos = {}, // top / left movement object
-            side; // top / left movement style keyword
+            tout, // setTimeout function
+            pi, // pager items array
+            si; // top / left and width / height style keywords (si.de, si.ze)
 
         // If element is not exist
-        if(t.length == 0) return t;
+        if(_.length == 0) return _;
 
         // Support multiple elements
-        if(t.length > 1) {
-            this.each(function(){$(t).syncSlider(userSettings)});
-            return t;
+        if(_.length > 1) {
+            _.each(function(){$(_).syncSlider(userSettings)});
+            return _;
         }
 
         // Initializing function
         function init() {
 
-            var w, // stripe wrapper
-                a, // stripe items array
-
-                size; // stripe width / height style keyword
+            var w,  // tape wrapper
+                ti; // tape items array
 
             // Merge user-supplied options with the defaults
             o = $.extend({}, defaults, userSettings);
 
-            // Set reference to the stripe items
-            a = t.children(o.stripe.itemTag);
+            // Set reference to the tape items
+            ti = _.children(o.stripe.itemTag);
+
+            n = N = ti.length;               // set slides count
+            x = o.step;                     // set movement step
 
             // Wrap stripe into div
-            if (o.wrap) {
-                s = t;
-                w = t.wrap($(document.createElement('div')).addClass(o.wrapperStyle)).parent();
-            }
-            else {
-                s = t.children(o.stripe.tag);
-                w = t;
-            }
+            o.wrap ? (t = _) && (w = _.wrap($(document.createElement('div')).addClass(o.wrapperStyle)).parent()) :
+                     (w = _) && (t = _.children(o.stripe.tag));
 
             // Horizontal or vertical settings
-            if (s.vertical) {
-                side = 'top';
-                size = 'height';
-                // pos = { top: 0 };
-            } else {
-                side = 'left';
-                size = 'width';
-                // pos = { left: 0 };
-            }
-            pos[side] = 0;
+            o.vertical ? si = { de: 'top', ze: _h } : si = { de: 'left', ze: _w };
+            m[si.de] = 0;
 
             // Add left and right navigation buttons
             if (o.nav.create) {
@@ -125,85 +125,110 @@
                 }));
             }
 
-            n = N = a.length;                  // set slides count
-            i = o.startSlide - 1;              // set current slide
-            slideSize = 100 / o.display;       // set slide width/ height
+            // Add pager
+            if (o.pager.create) {
+                var arr = [],
+                    npi = ~~(n / x), // number of pager items
+                    num = o.pager.numbers ? function(v) { return v + 1; } : function() { return '' };
+                for (var j = 0; j < npi; ++j) {
+                    arr.push('<' + o.pager.itemTag + '>' + num(j) + '</' + o.pager.itemTag + '>')
+                }
+                p = $(document.createElement(o.pager.tag)).addClass(o.pager.style).append(arr.join(''));
+                w.append(p); // add pager to wrapper
 
-            if (s.infinite) {
+                // Set pager items size and add events
+                pi = p.children(o.pager.itemTag).each(function(index, elem) {
+                    o.pager.stretch ? $(elem).css(o.pager.vertical ? _h : _w, 100 / n + '%') : 0;
+                    $(elem).on('click', function() { r.switchTo(index * x + 1) })
+                });
+
+                // set active start pager item
+                pi.eq(o.startSlide - 1).addClass(o.pager.activeStyle);
+            }
+
+            if (o.infinite) {
                 // Will do this in the future
             } else {
-                var last = N - o.display,
-                    fix = last < Math.abs(o.step) ? 0 : o.step % last;
+                var lst = n - o.display, // last i
+                    fix = lst < Math.abs(x) ? 0 : x % lst;
 
-                dir = o.step < 0 ? -1 : 1;
-                o.step = dir * o.step > last ? dir * last : o.step;
+                d = x > 0 ? 1 : -1;
+                x = d * x > lst ? d * lst : x;
 
                 if (o.reverse) {
-                    calci = fix ? function() {
-                        i = dir > 0 ? last - o.step * (i == last + o.step) : -o.step * (i == o.step);
-                        o.step *= -1;
-                    } :
-                        function() { i -= 2 * o.step; o.step *= -1; };
+                    calc = fix ? function() {
+                        i = d > 0 ? lst - x * (i == lst + x) : -x * (i == x); x *= -1;
+                    } : function() { i -= 2 * x; x *= -1; };
                 }
                 else {
-                    var lim = o.step > 0 ? last : 1;
-                    var end = o.step < 0 ? last : 0;
-                    calci = fix ? function() { i = o.step > i - lim ? last : 0; } :
-                        function() { i = end; };
+                    var lim = x > 0 ? lst : 1,
+                        end = x < 0 ? lst : 0;
+                    calc = fix ? function() { i = x > i - lim ? lst : 0; } : function() { i = end; };
                 }
             }
 
-            s.css(side, -slideSize * i + '%'); // set stripe start position
-            s.css(size,  slideSize * N + '%'); // set stripe size
-            a.css(size,        100 / N + '%'); // set stripe items sizes
+            tis = 100 / o.display;         // set slide width/ height
+            i = I = o.startSlide - 1;          // set current slide
+             t.css(si.de, -tis * i + '%'); // set tape start position
+             t.css(si.ze,  tis * N + '%'); // set tape size
+            ti.css(si.ze,  100 / N + '%'); // set tape items sizes
 
             // Set time for show and animation
-            wait = function() {  return o.switchTime + o.showTime };
+            wait = function() { return o.switchTime + o.showTime };
+
+            // Return current slide index
+            r.getCurrentSlide = o.infinite ? function() { return i % n + 1 } : function() { return i + 1 };
 
             // Set switch functions
             r.switchTo = r.setSlide = o.pager.create ? function(v) {
-                // setSlide(v);
-                // r.switchPagerTo(r.getCurrentSlide());
+                setSlide(v);
+                r.switchPagerTo(~~(r.getCurrentSlide() / x) + 1);
             } : setSlide;
 
             // Auto play
             o.autoStart ? r.play() : 0;
         }
 
+        function togglePager(v) { console.log(v);pi.eq(v).toggleClass(o.pager.activeStyle); }
+
+        r.switchPagerTo = function(v) {
+            togglePager(~~((I + 1) / x));
+            togglePager(v - 1);
+            I = r.getCurrentSlide() - 1;
+        };
+
         function setSlide(v) {
-            s.stop();
-            i = v;
-            if (dir = (i + o.display > N) - (i < 0)) calci();
-            //if (i + s.display > N) { calci(-1); }
-            //if (i             < 0) { calci( 1); }
+            t.stop();
+            i = v - 1;
+            d = (i + o.display > N) - (i < 0) ? calc() : 0;
 
             // movement in a certain direction
-            pos[side] = -slideSize * i + '%';
+            m[si.de] = -tis * i + '%';
             // switch animation
-            s.animate(pos, o.switchTime, 'swing');
+            t.animate(m, o.switchTime, o.animation);
             // Here will be another system of animation
         }
 
         function repeatAfter(ms) {
-            timeout = setTimeout(function() {
+            tout = setTimeout(function() {
                 r.switchToNext();
-                clearTimeout(timeout);
+                clearTimeout(tout);
                 repeatAfter(wait());
             }, ms);
         }
 
         r.play = function() {
-            clearTimeout(timeout);
+            clearTimeout(tout);
             //r.pause();
             repeatAfter(o.showTime);
         };
 
         r.switchToPrev = function() {
-            r.switchTo(i - o.step);
+            r.switchTo(i + 1 - x);
         };
 
         r.switchToNext = function() {
-            r.switchTo(i + o.step);
+            r.switchTo(i + 1 + x);
         };
 
         init();

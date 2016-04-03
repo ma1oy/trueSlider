@@ -5,19 +5,21 @@
 
 $stripeTag: 'ul';
 $stripeItemTag: 'li';
+$pagerItemTag: 'a';
 
 .ss-wrapper {
-  border: solid 1px red; //***
+  border: solid 1px black; //***
 
   position: relative;
-  height: 15rem;
+  overflow: hidden;
+  //height: 15rem;
 
   img {
     vertical-align: top; //*
   }
 
   > #{$stripeTag} {
-    background: gray; //***
+    //background: gray; //***
 
     float: left;
     position: relative;
@@ -26,13 +28,22 @@ $stripeItemTag: 'li';
     list-style: none;
 
     > #{$stripeItemTag} {
+      border: solid 1px black; //***
+
+      box-sizing: border-box; //*
       float: left;
     }
   }
 }
 
-.ss-prev, .ss-next {
+.ss-prev, .ss-next, .ss-pager > #{$pagerItemTag} {
   &:hover {
     cursor: pointer;
+  }
+}
+
+.ss-pager {
+  .-active {
+    border: solid 1px black; //***
   }
 }

@@ -3,22 +3,26 @@
   width: 500px; }
 
 .ss-wrapper {
-  border: solid 1px red;
+  border: solid 1px black;
   position: relative;
-  height: 15rem; }
+  overflow: hidden; }
   .ss-wrapper img {
     vertical-align: top; }
   .ss-wrapper > ul {
-    background: gray;
     float: left;
     position: relative;
     margin: 0;
     padding: 0;
     list-style: none; }
     .ss-wrapper > ul > li {
+      border: solid 1px black;
+      box-sizing: border-box;
       float: left; }
 
-.ss-prev:hover, .ss-next:hover {
+.ss-prev:hover, .ss-next:hover, .ss-pager > a:hover {
   cursor: pointer; }
+
+.ss-pager .-active {
+  border: solid 1px black; }
 
 /*# sourceMappingURL=ss.css.map */
