@@ -1,7 +1,6 @@
 // Will do in the future:
 // 2. fix prev / next button when fix var is true
 // 3. add infinite support
-// 4. add pause and stop buttons
 // 5. add fade animation support
 // 6. add progress bar
 // 7. add css animation support
@@ -239,9 +238,18 @@
         }
 
         r.play = function() {
-            clearTimeout(tout);
-            //r.pause();
+            r.pause();
             repeatAfter(o.showTime);
+        };
+
+        r.pause = function() {
+            clearTimeout(tout);
+        };
+
+        r.stop = function() {
+            r.pause();
+            i = o.startSlide - 1;
+            r.switchTo(i + 1);
         };
 
         r.switchToPrev = function() {

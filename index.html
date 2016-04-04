@@ -25,13 +25,16 @@
             <li>Item 6</li>
             <li>Item 7</li>
         </ul>
+        <a onclick="ss.play()">Play</a>
+        <a onclick="ss.pause()">Pause</a>
+        <a onclick="ss.stop()">Stop</a>
     </div>
 </div>
 
 <script type="text/javascript" src="js/jquery-2.2.2.min.js"></script>
 <script type="text/javascript" src="js/syncSlider.js"></script>
 <script type="text/javascript">
-    $('.ss_main').syncSlider();
+    var ss = $('.ss_main').syncSlider();
 </script>
 
 </body>
