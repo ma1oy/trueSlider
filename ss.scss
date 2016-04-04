@@ -37,6 +37,9 @@ $pagerItemTag: 'a';
 }
 
 .ss-prev, .ss-next, .ss-pager > #{$pagerItemTag} {
+  //display: block;
+  //float: left;
+
   &:hover {
     cursor: pointer;
   }

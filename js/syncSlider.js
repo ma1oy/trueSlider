@@ -1,5 +1,5 @@
 // Will do in the future:
-// 1. fix each stretch!!!
+// 0. add nav wrapper
 // 2. fix prev / next button when fix var is true
 // 3. add infinite support
 // 4. add pause and stop buttons
@@ -11,6 +11,8 @@
 
 ;+function($) {
 
+    // var fun = Function;
+
     $.extend($.easing, {
         easeInOutCubic: function (x, t, b, c, d) {
             if ((t/=d/2) < 1) return c/2*t*t*t + b;
@@ -20,7 +22,7 @@
 
     function ceil(v) { return v > ~~v ? ~~++v : v }
     // function abs(v) { return v > 0 ? v : -v }
-    // function round(v) { return v - ~~v < 0.5 ? ~~v : ~~++v }
+    // function round(v) { return v - ~~v < .5 ? ~~v : ~~++v }
     // function sign(v) { return v > 0 ? 1 : -1 }
 
     var defaults = {
@@ -37,7 +39,7 @@
         startSlide: 1,
         display: 4,
         step: 2,
-        autoStart: true,
+        autoStart: false,//true,
 
         // WRAPPER
         wrap: true,
@@ -67,6 +69,7 @@
             vertical: false,
             stretch: true,
             numbers: true,
+            switchMode: 2,
             activeStyle: '-active'
         },
 
@@ -110,7 +113,7 @@
 
         // Support multiple elements
         if(_.length > 1) {
-            _.each(function(){$(_).syncSlider(userSettings)});
+            _.each(function(){ $(_).syncSlider(userSettings) });
             return _;
         }
 
@@ -142,50 +145,59 @@
             // Add left and right navigation buttons
             if (o.nav.create) {
                 ni = $(document.createElement(o.nav.itemTag));
-                w.append(ni.clone().addClass(o.nav.prevStyle).text(o.nav.prevText).on('click', function() {
-                    r.switchToPrev();
-                }));
-                w.append(ni.addClass(o.nav.nextStyle).text(o.nav.nextText).on('click', function() {
-                    r.switchToNext();
-                }));
+                w.append(ni.clone().addClass(o.nav.prevStyle).text(o.nav.prevText).on('click',
+                    function() { r.switchToPrev(); }));
+                w.append(ni        .addClass(o.nav.nextStyle).text(o.nav.nextText).on('click',
+                    function() { r.switchToNext(); }));
             }
 
             // Add pager
             if (o.pager.create) {
                 var arr = [],
-                    num = o.pager.numbers ? function(v) { return v + 1; } : function() { return '' },
+                    num = o.pager.numbers ?
+                        function(v) { return v + 1; } :
+                        function( ) { return '' },
                     tag = o.pager.itemTag + '>';
+                // Set array of pager items
                 for (j = 0; j < ceil(l / ax) + 1; ++j) { arr.push('<' + tag + num(j) + '</' + tag); }
-                p = $(document.createElement(o.pager.tag)).addClass(o.pager.style).append(arr.join(''));
-                w.append(p); // add pager to wrapper
-
+                // Create pager and add it to wrapper
+                w.append(p = $(document.createElement(o.pager.tag)).addClass(o.pager.style).append(arr.join('')));
                 // Set pager items size and add events
-                pi = p.children(o.pager.itemTag).each(function(index, elem) {
-//** fix each stretch!!!
-                    o.pager.stretch ? $(elem).css(o.pager.vertical ? _h : _w, 100 / n + '%') : 0;
-                    var i = index * ax;
-                    $(elem).on('click', fix ? function() { r.switchTo((i > l ? l : i) + 1) } :
-                        function() { r.switchTo(i + 1) });
-                });
-
+                j = 100 / n + '%';
+                var setSize = o.pager.vertical ?
+                    function(e) { $(e).css(_h, j); } :
+                    function(e) { $(e).css(_w, j); };
+                var addClick = fix ?
+                    function(i, e) { $(e).on('click', function() { r.switchTo((i > l ? l : i) + 1) }); } :
+                    function(i, e) { $(e).on('click', function() { r.switchTo(             i  + 1) }); };
+                pi = p.children(o.pager.itemTag).each(o.pager.stretch ?
+                    function(i, e) { addClick(i * ax, e); setSize(e); } :
+                    function(i, e) { addClick(i * ax, e); });
                 // Set active start pager item
                 pi.eq(o.startSlide - 1).addClass(o.pager.activeStyle);
-
                 // Return current pager index
                 r.getCurrentPager = ax < 2 ?
-                    function() { return r.getCurrentSlide() } :
-                    function() { return ceil((r.getCurrentSlide() - 1) / ax) + 1 };
-
+                    function() { return      i       + 1 } :
+                    function() { return ceil(i / ax) + 1 };
+                // Convert current slide index to pager item index if display > 1
                 var toPager = ax < 2 ? function() { return I } : function() { return ceil(I / ax) };
-                function tgPager(v) { pi.eq(v).toggleClass(o.pager.activeStyle); } // toggle pager style
-
+                // Toggle pager style
+                function tgPager(v) { pi.eq(v).toggleClass(o.pager.activeStyle); }
+                // Switching beetwin pager items
                 r.switchPagerTo = function(v) {
                     tgPager(toPager());
                     tgPager(v - 1);
-                    I = r.getCurrentSlide() - 1;
+                    I = i;
                 };
 
-                j = function(v) { setSlide(v); r.switchPagerTo(r.getCurrentPager()); };
+                var setPager = o.pager.switchMode > 0 ?
+                    function(v) { setTimeout(function() {
+                                  r.switchPagerTo(v); }, o.switchTime / o.pager.switchMode) } :
+                    function(v) { r.switchPagerTo(v); };
+                j = function(v) {
+                    setSlide(v);
+                    setPager(r.getCurrentPager());
+                };
             } else j = setSlide;
             r.switchTo = r.setSlide = j;
 
@@ -209,8 +221,8 @@
             }
 
             i = I = o.startSlide - 1;      // set current slide
-             t.css(si.de, -tis * i + '%'); // set tape start position
-             t.css(si.ze,  tis * N + '%'); // set tape size
+            t .css(si.de, -tis * i + '%'); // set tape start position
+            t .css(si.ze,  tis * N + '%'); // set tape size
             ti.css(si.ze,  100 / N + '%'); // set tape items sizes
 
             // Return current slide index
@@ -221,17 +233,20 @@
         }
 
         function setSlide(v) {
-            t.stop();
             i = v - 1;
             d = (i > l) - (i < 0) ? calc() : 0; // start / end correction
             m[si.de] = -tis * i + '%'; // movement in a certain direction
+            t.stop();
             t.animate(m, o.switchTime, o.animation); // switch animation
+            // ti.eq(I).stop();
+            // ti.eq(i).animate({opacity: 0}, o.switchTime, o.animation); // switch animation
+            // t.css(m);
         }
 
         function repeatAfter(ms) {
             tout = setTimeout(function() {
                 r.switchToNext();
-                clearTimeout(tout);
+                // clearTimeout(tout);
                 repeatAfter(wait());
             }, ms);
         }
