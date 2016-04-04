@@ -1,5 +1,4 @@
 // Will do in the future:
-// 0. add nav wrapper
 // 2. fix prev / next button when fix var is true
 // 3. add infinite support
 // 4. add pause and stop buttons
@@ -10,8 +9,6 @@
 // 9. add callbacks
 
 ;+function($) {
-
-    // var fun = Function;
 
     $.extend($.easing, {
         easeInOutCubic: function (x, t, b, c, d) {
@@ -24,57 +21,47 @@
     // function abs(v) { return v > 0 ? v : -v }
     // function round(v) { return v - ~~v < .5 ? ~~v : ~~++v }
     // function sign(v) { return v > 0 ? 1 : -1 }
+    function _(v) { return prefix + '-' + v; }
 
-    var defaults = {
-
-        // GENERAL
-        style: 'ss-slider',
-        vertical: false,
-        infinite: false,
-        reverse: false,//true,
-        sync: false,
-        switchTime: 1000,
-        showTime: 1000,
-        animation: 'easeInOutCubic',//'easeOutBounce',//'swing',
-        startSlide: 1,
-        display: 4,
-        step: 2,
-        autoStart: false,//true,
-
-        // WRAPPER
-        wrap: true,
-        wrapperStyle: 'ss-wrapper',
-
-        stripe: {
-            tag: 'ul',
-            itemTag: 'li'
-        },
+    var prefix   = 'ss',
+        defaults = {
+                 style: _('slider'),
+              vertical: false,
+              infinite: false,
+               reverse: false,//true,
+                  sync: false,
+            switchTime: 1000,
+              showTime: 1000,
+             animation: 'easeInOutCubic',//'easeOutBounce',//'swing',
+            startSlide: 1,
+               display: 4,
+                  step: 2,
+             autoStart: true,
+                  wrap: true,
+          wrapperStyle: _('wrapper'),
+             stripeTag: 'ul',
+         stripeItemTag: 'li',
 
         nav: {
-            create: true,
-            tag: 'nav',
-            itemTag: 'a',
-            style: 'ss-nav',
-            prevStyle: 'ss-prev',
-            prevText: 'Previous',
-            nextStyle: 'ss-next',
-            nextText: 'Next'
+                   use: true,                add: true,
+                   tag: 'nav',           itemTag: 'a',
+                 style: _('nav'),
+             prevStyle: _('prev'),     nextStyle: _('next'),
+              prevText: 'Previous',     nextText: 'Next'
         },
 
         pager: {
-            create: true,
-            tag: 'nav',
-            itemTag: 'a',
-            style: 'ss-pager',
-            vertical: false,
-            stretch: true,
-            numbers: true,
-            switchMode: 2,
-            activeStyle: '-active'
+                   use: true,                add: true,
+                   tag: 'nav',           itemTag:  'a',
+                 style: _('pager'),  activeStyle: '-active',
+              vertical: false,
+               stretch: true,
+               numbers: true,
+            switchMode: 2
         },
 
         progress: {
-            create: true
+                   use: true,             create: true
         }
     };
 
@@ -89,7 +76,8 @@
             o, // all options
             p, // pager
             i, // current slide index
-            j = {}, // temporary variable
+            j, // temporary variable
+            nav, // nav wrapper
             n, // source slides number
             N, // all slides number
             x, // movement step
@@ -125,7 +113,7 @@
 
             // Wrap stripe into div
             o.wrap ? (t = _) && (w = _.wrap($(document.createElement('div')).addClass(o.wrapperStyle)).parent()) :
-                     (w = _) && (t = _.children(o.stripe.tag));
+                     (w = _) && (t = _.children(o.stripeTag));
 
             // Set time for show and animation
             wait = function() { return o.switchTime + o.showTime };
@@ -134,7 +122,7 @@
             o.vertical ? si = { de: 'top', ze: _h } : si = { de: 'left', ze: _w };
             m[si.de] = 0;
 
-            ti = t.children(o.stripe.itemTag);  // set reference to the tape items
+            ti = t.children(o.stripeItemTag);  // set reference to the tape items
             tis = 100 / o.display;              // set slide width/ height
             n = N = ti.length;                  // set slides count
             l = N - o.display;                  // last possible slide index
@@ -143,16 +131,18 @@
             fix = l < ax ? 0 : x % l;           // fix step is necessary
 
             // Add left and right navigation buttons
-            if (o.nav.create) {
-                ni = $(document.createElement(o.nav.itemTag));
-                w.append(ni.clone().addClass(o.nav.prevStyle).text(o.nav.prevText).on('click',
+            if (o.nav.add) {
+                nav = $(document.createElement(o.nav.tag)).addClass(o.nav.style);
+                 ni = $(document.createElement(o.nav.itemTag));
+                nav.append(ni.clone().addClass(o.nav.prevStyle).text(o.nav.prevText).on('click',
                     function() { r.switchToPrev(); }));
-                w.append(ni        .addClass(o.nav.nextStyle).text(o.nav.nextText).on('click',
+                nav.append(ni/*orig*/.addClass(o.nav.nextStyle).text(o.nav.nextText).on('click',
                     function() { r.switchToNext(); }));
+                w.append(nav);
             }
 
             // Add pager
-            if (o.pager.create) {
+            if (o.pager.add) {
                 var arr = [],
                     num = o.pager.numbers ?
                         function(v) { return v + 1; } :
@@ -163,7 +153,7 @@
                 // Create pager and add it to wrapper
                 w.append(p = $(document.createElement(o.pager.tag)).addClass(o.pager.style).append(arr.join('')));
                 // Set pager items size and add events
-                j = 100 / n + '%';
+                j = 100 / N + '%';
                 var setSize = o.pager.vertical ?
                     function(e) { $(e).css(_h, j); } :
                     function(e) { $(e).css(_w, j); };
@@ -189,15 +179,12 @@
                     tgPager(v - 1);
                     I = i;
                 };
-
+                //
                 var setPager = o.pager.switchMode > 0 ?
-                    function(v) { setTimeout(function() {
+                    function(v) { clearTimeout(j); j = setTimeout(function() {
                                   r.switchPagerTo(v); }, o.switchTime / o.pager.switchMode) } :
                     function(v) { r.switchPagerTo(v); };
-                j = function(v) {
-                    setSlide(v);
-                    setPager(r.getCurrentPager());
-                };
+                j = function(v) { setSlide(v); setPager(r.getCurrentPager()); };
             } else j = setSlide;
             r.switchTo = r.setSlide = j;
 
