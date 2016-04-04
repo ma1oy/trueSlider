@@ -1,11 +1,12 @@
 // Will do in the future:
+// 1. fix nav functions when reverse is true
 // 2. fix prev / next button when fix var is true
 // 3. add infinite support
-// 5. add fade animation support
-// 6. add progress bar
-// 7. add css animation support
-// 8. add touch support
-// 9. add callbacks
+// 4. add fade animation support
+// 5. add progress bar
+// 6. add css animation support
+// 7. add touch support
+// 8. add callbacks
 
 ;+function($) {
 
@@ -35,7 +36,7 @@
             startSlide: 1,
                display: 4,
                   step: 2,
-             autoStart: true,
+             autoStart: false,
                   wrap: true,
           wrapperStyle: _('wrapper'),
              stripeTag: 'ul',
@@ -133,10 +134,11 @@
             if (o.nav.add) {
                 nav = $(document.createElement(o.nav.tag)).addClass(o.nav.style);
                  ni = $(document.createElement(o.nav.itemTag));
+                function play() { o.play ? setTimeout(function() { r.play(); }, o.switchTime) : 0; }
                 nav.append(ni.clone().addClass(o.nav.prevStyle).text(o.nav.prevText).on('click',
-                    function() { r.switchToPrev(); }));
+                    function() { clt(); r.switchToPrev(); play(); }));
                 nav.append(ni/*orig*/.addClass(o.nav.nextStyle).text(o.nav.nextText).on('click',
-                    function() { r.switchToNext(); }));
+                    function() { clt(); r.switchToNext(); play(); }));
                 w.append(nav);
             }
 
@@ -156,8 +158,8 @@
                 var setSize = o.pager.vertical ?
                     function(e) { $(e).css(_h, j); } :
                     function(e) { $(e).css(_w, j); };
-                var addClick = fix ?
-                    function(i, e) { $(e).on('click', function() { r.switchTo((i > l ? l : i) + 1) }); } :
+                var addClick = //fix ?
+                    // function(i, e) { $(e).on('click', function() { r.switchTo((i > l ? l : i) + 1) }); } :
                     function(i, e) { $(e).on('click', function() { r.switchTo(             i  + 1) }); };
                 pi = p.children(o.pager.itemTag).each(o.pager.stretch ?
                     function(i, e) { addClick(i * ax, e); setSize(e); } :
@@ -220,7 +222,7 @@
 
         function setSlide(v) {
             i = v - 1;
-            d = (i > l) - (i < 0) ? calc() : 0; // start / end correction
+            (d = (i > l) - (i < 0)) ? calc() : 0; // start / end correction
             m[si.de] = -tis * i + '%'; // movement in a certain direction
             t.stop();
             t.animate(m, o.switchTime, o.animation); // switch animation
@@ -237,13 +239,17 @@
             }, ms);
         }
 
+        function clt() { clearTimeout(tout); }
+
         r.play = function() {
-            r.pause();
+            clt();
+            o.play = true;
             repeatAfter(o.showTime);
         };
 
         r.pause = function() {
-            clearTimeout(tout);
+            clt();
+            o.play = false;
         };
 
         r.stop = function() {
