@@ -1,13 +1,18 @@
-// Will do in the future:
-// 1. add disable to nav buttons
-// 2. fix prev / next button when fix var is true
-// 3. add infinite support
-// 4. add fade animation support
-// 5. add progress bar
-// 6. add css animation support
-// 7. add touch support
-// 8. add callbacks
-// * change o.play
+/////// Will do in the future:
+//
+// fix prev / next button when fix var is true
+// add disable to nav buttons
+// add infinite support
+// add fade animation support
+// add progress bar
+// add scroll
+// add css animation support
+// add touch support
+// add mouse support
+// add callbacks
+// add ajax
+//
+////// * change o.play
 
 ;+function($) {
 
@@ -26,42 +31,55 @@
 
     var prefix   = 'ss',
         defaults = {
-                 style: _('slider'),
-              vertical: false,
-              infinite: false,
-               reverse: false,
-                  sync: false,
-            switchTime: 1000,
-              showTime: 1000,
-             animation: 'easeInOutCubic',//'easeOutBounce',//'swing',
-            startSlide: 1,
-               display: 4,
-                  step: 2,
-             autoStart: false,
-                  wrap: true,
-          wrapperStyle: _('wrapper'),
-             stripeTag: 'ul',
-         stripeItemTag: 'li',
+            style:                  _('slider'),
+            vertical:               false,
+            infinite:               false,
+            reverse:                false,
+            sync:                   false,
+            switchTime:             1000,
+            showTime:               1000,
+            animation:              'easeInOutCubic',//'easeOutBounce',//'swing',
+            display:                4,
+            startSlide:             1,
+            autoStart:              false,
+
+            // STEP SETTINGS
+            step:                   -3,
+            stepCorrection:         true,
+            stepCorrectionOffset:   4,
+
+            // WRAPPER
+            wrap:                   true,
+            wrapperStyle:           _('wrapper'),
+            stripeTag:             'ul',
+            stripeItemTag:          'li',
 
         nav: {
-                   use: true,                add: true,
-                   tag: 'nav',           itemTag: 'a',
-                 style: _('nav'),   disableStyle: '-disable',
-             prevStyle: _('prev'),     nextStyle: _('next'),
-              prevText: 'Previous',     nextText: 'Next'
+            add:                    true,
+            tag:                    'nav',
+            itemTag:                'a',
+            style:                  _('nav'),
+            disableStyle:           '-disable',
+            prevStyle:              _('prev'),
+            nextStyle:              _('next'),
+            prevText:               'Previous',
+            nextText:               'Next'
         },
 
         pager: {
-                   use: true,                add: true,
-                   tag: 'nav',           itemTag:  'a',
-                 style: _('pager'),  activeStyle: '-active',
-               stretch: true,           vertical: false,
-               numbers: true,
-            switchMode: 2
+            add:                    true,
+            tag:                    'nav',
+            itemTag:                'a',
+            style:                  _('pager'),
+            activeStyle:            '-active',
+            stretch:                true,
+            vertical:               false,
+            numbers:                true,
+            switchMode:             2
         },
 
         progress: {
-                   use: true,             create: true
+            add:                    true
         }
     };
 
@@ -72,29 +90,32 @@
             _ = $(this),
             r = {}, // object for return
             m = {}, // top / left movement object
-            w,  // tape wrapper
             o, // all options
-            p, // pager
-            i, // current slide index
-            j, // temporary variable
-            nav, // nav wrapper
-            n, // source slides number
-            N, // all slides number
-            x, // movement step
-            ax, // abs of movement step x
-            d, // forward / backward direction (1, -1)
-            l, // last possible slide index
-            ni, // navigation item
+            w,  // tape wrapper
             t, // tape
             ti, // tape items array
             tis, // tape item size (width / height)
-            fix, // fix step if necessary
+            nav, // nav wrapper
+            ni, // navigation item
+            p, // pager
+            pi, // pager items array
+            i, // current slide index
             I, // previous i
+            j, // temporary variable
+            n, // source slides number
+            N, // all slides number
+            x, // movement step
+            X, // const of X
+            ax, // abs of movement step x
+            sco, // step correction offset value
+            d, // forward / backward direction (1, -1)
+            D, // sign of step
+            l, // last possible slide index
+            si, // top / left and width / height style keywords (si.de, si.ze)
+            fix, // fix step if necessary
             calc, // function for i calculation
             wait, // wait time for show and animation
-            tout, // setTimeout function
-            pi, // pager items array
-            si; // top / left and width / height style keywords (si.de, si.ze)
+            tout; // setTimeout function
 
         // If element is not exist
         if(_.length == 0) return _;
@@ -122,16 +143,21 @@
             o.vertical ? si = { de: 'top', ze: _h } : si = { de: 'left', ze: _w };
             m[si.de] = 0;
 
-            ti = t.children(o.stripeItemTag);  // set reference to the tape items
+            ti = t.children(o.stripeItemTag);   // set reference to the tape items
             tis = 100 / o.display;              // set slide width/ height
+            i = I = o.startSlide - 1;           // set current slide
             n = N = ti.length;                  // set slides count
             l = N - o.display;                  // last possible slide index
+
             x = o.step;                         // set movement step
-            d = x > 0 ? 1 : -1;
-            x = d * x > l ? d * l : x;          // fix step if it more then last slide
+            D = x > 0 ? 1 : -1;
+            x = X = D * x > l ? D * l : x;      // fix step if it more then last slide
             ax = x > 0 ? x : -x;                // absolutely step
-            fix = l % ax || l < ax;             // fix step is necessary
-            i = I = o.startSlide - 1;           // set current slide
+            sco = (sco = o.stepCorrectionOffset) > 0 ? sco % x : ax + sco % x;
+            fix = l % ax;
+            fix = fix || l < ax ? fix : 0;      // fix step is necessary
+            // fix ? x = o.stepMode == 1 ? o.startSlide == l + 1 ? fix : x :
+            //           o.stepMode == 2 ? o.startSlide == 0     ? fix : x : x : 0; // Set step by step mode
 
             // Add left and right navigation buttons
             if (o.nav.add) {
@@ -148,10 +174,8 @@
             // Add pager
             if (o.pager.add) {
                 var arr = [],
-                    num = o.pager.numbers ?
-                        function(v) { return v + 1; } :
-                        function( ) { return '' },
-                    tag = o.pager.itemTag + '>';
+                    tag = o.pager.itemTag + '>',
+                    num = o.pager.numbers ? function(v) { return v + 1; } : function( ) { return '' };
                 // Set array of pager items
                 for (j = 0; j < ceil(l / ax) + 1; ++j) { arr.push('<' + tag + num(j) + '</' + tag); }
                 // Create pager and add it to wrapper
@@ -161,48 +185,55 @@
                 var setSize = o.pager.vertical ?
                     function(e) { $(e).css(_h, j); } :
                     function(e) { $(e).css(_w, j); };
-                var addClick = //fix ?
-                    // function(v, e) { $(e).on('click', function() { r.switchTo((v > l ? l : v) + 1) }); } :
-                    function(v, e) { $(e).on('click', function() { r.switchTo(             v  + 1) }); };
+                var addClick = function(v, e) { $(e).on('click', function() { r.switchTo(v + 1) }); };
                 pi = p.children(o.pager.itemTag).each(o.pager.stretch ?
                     function(i, e) { addClick(i * ax, e); setSize(e); } :
                     function(i, e) { addClick(i * ax, e); });
                 // Set active start pager item
-                pi.eq(o.startSlide - 1).addClass(o.pager.activeStyle);
-                // Return current pager index
-                r.getCurrentPage = ax < 2 ?
-                    function() { return      i       + 1 } :
-                    function() { return ceil(i / ax) + 1 };
+                pi.eq(ceil((o.startSlide - 1) / ax)).addClass(o.pager.activeStyle);
                 // Convert current slide index to pager item index if display > 1
-                var toPager = ax < 2 ? function() { return I } : function() { return ceil(I / ax) };
-                // Toggle pager style
-                function tgPager(v) { pi.eq(v).toggleClass(o.pager.activeStyle); }
-                // Switching beetwin pager items
-                r.switchPagerTo = function(v) {
-                    tgPager(toPager());
-                    tgPager(v - 1);
-                    // I = i;
-                };
-                //
-                var setPager = o.pager.switchMode > 0 ?
+                var toPager = ax < 2 ?
+                    function(v) { return v } :
+                    function(v) { return ceil(v / ax) };
+                // Set page
+                var I_ = i;
+                function setPag(v) {
+                    pi.eq(toPager(I_)).removeClass(o.pager.activeStyle);
+                    pi.eq(v - 1).addClass(o.pager.activeStyle);
+                    I_ = i;
+                }
+                // Return current page index
+                r.getCurrentPage = function() { return toPager(i) + 1; };
+                // Switching beetwin pages
+                r.switchPageTo = o.pager.switchMode > 0 ?
                     function(v) { clearTimeout(j); j = setTimeout(function() {
-                                  r.switchPagerTo(v); }, o.switchTime / o.pager.switchMode) } :
-                    function(v) { r.switchPagerTo(v); };
-                j = function(v) { setSlide(v); setPager(r.getCurrentPage()); };
+                                  setPag(v); }, o.switchTime / o.pager.switchMode) } :
+                    function(v) { setPag(v); };
+                j = function(v) { setSlide(v); r.switchPageTo(r.getCurrentPage()); };
             } else j = setSlide;
             r.switchTo = r.setSlide = j;
+            r.switchTo = j;
 
             if (o.infinite) {
                 // Will do this in the future
                 l = N - o.display;
             } else {
-                o.reverse ?
-                    calc = fix ?
-                        function() { i = d > 0 ? l - x * (i == l + x) : -x * (i == x); x *= -1; } :
-                        function() { i -= 2 * x; x *= -1; } :
-                    calc = fix ?
-                        function() { i = i - d * x < (!~d ? 1 : l) ? l : 0; } :
-                        function() { i = !~d ? l : 0; };
+                // o.reverse ?
+                //     calc = fix ?
+                //         function() { i = d > 0 ? l - x * (i == l + x) : -x * (i == x); x *= -1; } :
+                //         function() { i -= 2 * x; x *= -1; } :
+                //     calc = fix ?
+                //         !o.stepCorrectionOffset ?
+                //             // function() { I < l ? (i = l) && (x = D * fix) : i = 0; } :
+                //             function() { i = I < l ? l : 0; } :
+                //             // function() { i = i - d * ax < (!~d ? 1 : l) ? l : 0; } :
+                //             function() { i = i - x < l ? l : 0; } :
+                //         function() { i = !~d ? l : 0; };
+                calc = function() {
+                    i = i - D * d * x < (!~d ? 1 : l) ? l : 0;
+                    // i = i + x < l ? l : 0;
+                    // i = i - x < 1 ? l : 0;
+                };
             }
 
             t .css(si.de, -tis * i + '%'); // set tape start position
@@ -216,10 +247,7 @@
             o.autoStart ? r.play() : 0;
         }
 
-        function setSlide(v) {
-            I = i;
-            i = v - 1;
-            (d = (i > l) - (i < 0)) ? calc() : 0; // start / end correction
+        function animate() {
             m[si.de] = -tis * i + '%'; // movement in a certain direction
             t.stop();
             t.animate(m, o.switchTime, o.animation); // switch animation
@@ -228,11 +256,20 @@
             // t.css(m);
         }
 
-        function repeatAfter(ms) {
+        function setSlide(v) {
+            I = i;
+            // x = X;
+            i = v - 1;
+
+            (d = (i > l) - (i < 0)) ? calc() : 0; // start / end correction
+            animate();
+        }
+
+        function loop(ms) {
             tout = setTimeout(function() {
                 r.switchToNext();
                 // clearTimeout(tout);
-                repeatAfter(wait());
+                loop(wait());
             }, ms);
         }
 
@@ -241,7 +278,7 @@
         r.play = function() {
             clt();
             o.play = true;
-            repeatAfter(o.showTime);
+            loop(o.showTime);
         };
 
         r.pause = function() {
@@ -256,10 +293,13 @@
         };
 
         r.switchToPrev = function() {
+            x = (X - sco + i % X) % X || X;
+            console.log(x);
             r.switchTo(i + 1 - x);
         };
 
         r.switchToNext = function() {
+            x = (X + sco - i % X) % X || X;
             r.switchTo(i + 1 + x);
         };
 
