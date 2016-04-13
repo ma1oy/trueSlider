@@ -40,13 +40,13 @@
             showTime:               1000,
             animation:              'easeInOutCubic',//'easeOutBounce',//'swing',
             display:                4,
-            startSlide:             1,
+            startSlide:             6,
             autoStart:              false,
 
             // STEP SETTINGS
-            step:                   -3,
-            stepCorrection:         true,
-            stepCorrectionOffset:   4,
+            step:                   3,
+            stepAlignment:          true,
+            stepAlignmentOffset:    -5,
 
             // WRAPPER
             wrap:                   true,
@@ -153,7 +153,7 @@
             D = x > 0 ? 1 : -1;
             x = X = D * x > l ? D * l : x;      // fix step if it more then last slide
             ax = x > 0 ? x : -x;                // absolutely step
-            sco = (sco = o.stepCorrectionOffset) > 0 ? sco % x : ax + sco % x;
+            sco = (sco = o.stepAlignmentOffset) > 0 ? sco % x : ax + sco % x;
             fix = l % ax;
             fix = fix || l < ax ? fix : 0;      // fix step is necessary
             // fix ? x = o.stepMode == 1 ? o.startSlide == l + 1 ? fix : x :
@@ -212,18 +212,23 @@
                 j = function(v) { setSlide(v); r.switchPageTo(r.getCurrentPage()); };
             } else j = setSlide;
             r.switchTo = r.setSlide = j;
-            r.switchTo = j;
+            o.stepAlignment ?
+                (r.switchToPrev = function() { r.switchTo(i + 1 - (x = (X - sco + i % X) % X || X)); }) &&
+                (r.switchToNext = function() { r.switchTo(i + 1 + (x = (X + sco - i % X) % X || X)); }) :
+                (r.switchToPrev = function() { r.switchTo(i + 1 -  x); }) &&
+                (r.switchToNext = function() { r.switchTo(i + 1 +  x); });
 
             if (o.infinite) {
                 // Will do this in the future
                 l = N - o.display;
-            } else {
+            }
+            else {
                 // o.reverse ?
                 //     calc = fix ?
                 //         function() { i = d > 0 ? l - x * (i == l + x) : -x * (i == x); x *= -1; } :
                 //         function() { i -= 2 * x; x *= -1; } :
                 //     calc = fix ?
-                //         !o.stepCorrectionOffset ?
+                //         !o.stepAlignmentOffset ?
                 //             // function() { I < l ? (i = l) && (x = D * fix) : i = 0; } :
                 //             function() { i = I < l ? l : 0; } :
                 //             // function() { i = i - d * ax < (!~d ? 1 : l) ? l : 0; } :
@@ -231,8 +236,6 @@
                 //         function() { i = !~d ? l : 0; };
                 calc = function() {
                     i = i - D * d * x < (!~d ? 1 : l) ? l : 0;
-                    // i = i + x < l ? l : 0;
-                    // i = i - x < 1 ? l : 0;
                 };
             }
 
@@ -290,17 +293,6 @@
             r.pause();
             i = o.startSlide - 1;
             r.switchTo(i + 1);
-        };
-
-        r.switchToPrev = function() {
-            x = (X - sco + i % X) % X || X;
-            console.log(x);
-            r.switchTo(i + 1 - x);
-        };
-
-        r.switchToNext = function() {
-            x = (X + sco - i % X) % X || X;
-            r.switchTo(i + 1 + x);
         };
 
         init();
