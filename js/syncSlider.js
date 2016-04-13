@@ -45,8 +45,9 @@
 
             // STEP SETTINGS
             step:                   3,
-            stepAlignment:          true,
+            stepAlignment:          false,
             stepAlignmentOffset:    -5,
+            inRange:                true,
 
             // WRAPPER
             wrap:                   true,
@@ -85,7 +86,9 @@
 
     $.fn.syncSlider = function(userSettings) {
 
-        var _h = 'height',
+        var _t = 'top',
+            _l = 'left',
+            _h = 'height',
             _w = 'width',
             _ = $(this),
             r = {}, // object for return
@@ -102,14 +105,15 @@
             i, // current slide index
             I, // previous i
             j, // temporary variable
-            n, // source slides number
-            N, // all slides number
+            N, // source slides number
+            n, // all slides number
             x, // movement step
             X, // const of X
             ax, // abs of movement step x
-            sco, // step correction offset value
+            sao, // step correction offset value
             d, // forward / backward direction (1, -1)
             D, // sign of step
+            f, // first possible slide index
             l, // last possible slide index
             si, // top / left and width / height style keywords (si.de, si.ze)
             fix, // fix step if necessary
@@ -139,25 +143,20 @@
             // Set time for show and animation
             wait = function() { return o.switchTime + o.showTime };
 
-            // Horizontal or vertical settings
-            o.vertical ? si = { de: 'top', ze: _h } : si = { de: 'left', ze: _w };
-            m[si.de] = 0;
-
-            ti = t.children(o.stripeItemTag);   // set reference to the tape items
-            tis = 100 / o.display;              // set slide width/ height
-            i = I = o.startSlide - 1;           // set current slide
-            n = N = ti.length;                  // set slides count
-            l = N - o.display;                  // last possible slide index
-
-            x = o.step;                         // set movement step
-            D = x > 0 ? 1 : -1;
-            x = X = D * x > l ? D * l : x;      // fix step if it more then last slide
-            ax = x > 0 ? x : -x;                // absolutely step
-            sco = (sco = o.stepAlignmentOffset) > 0 ? sco % x : ax + sco % x;
-            fix = l % ax;
-            fix = fix || l < ax ? fix : 0;      // fix step is necessary
-            // fix ? x = o.stepMode == 1 ? o.startSlide == l + 1 ? fix : x :
-            //           o.stepMode == 2 ? o.startSlide == 0     ? fix : x : x : 0; // Set step by step mode
+            o.vertical ? si = { de: _t , ze: _h } : si = { de: _l, ze: _w };    // horizontal or vertical settings
+            m[si.de] = 0;                                                       // set movement side value
+            ti = t.children(o.stripeItemTag);                                   // set reference to the tape items
+            tis = 100 / o.display;                                              // set slide width/ height
+            i = I = o.startSlide - 1;                                           // set current slide
+            n = N = ti.length;                                                  // set slides count
+            l = N - o.display;                                                  // last possible slide index
+            x = o.step;                                                         // set movement step
+            D = x > 0 ? 1 : -1;                                                 // movement direction
+            ax = D * x;                                                         // absolutely step
+            x = X = ax > l ? D * l : x;                                         // fix step if it more then last slide
+            sao = (sao = o.stepAlignmentOffset) > 0 ? sao % x : ax + sao % x;   // step alignment offset
+            fix = (fix = l % ax) || l < ax ? fix : 0;                           // fix step is necessary
+            o.inRange ? f = 0 : (f = 1 - ax) && (l += fix);                     // fix step if in range
 
             // Add left and right navigation buttons
             if (o.nav.add) {
@@ -211,40 +210,40 @@
                     function(v) { setPag(v); };
                 j = function(v) { setSlide(v); r.switchPageTo(r.getCurrentPage()); };
             } else j = setSlide;
-            r.switchTo = r.setSlide = j;
+
+            r.switchTo = j;
+            r.setSlide = setSlide;
             o.stepAlignment ?
-                (r.switchToPrev = function() { r.switchTo(i + 1 - (x = (X - sco + i % X) % X || X)); }) &&
-                (r.switchToNext = function() { r.switchTo(i + 1 + (x = (X + sco - i % X) % X || X)); }) :
-                (r.switchToPrev = function() { r.switchTo(i + 1 -  x); }) &&
-                (r.switchToNext = function() { r.switchTo(i + 1 +  x); });
+                (r.switchToPrev = function() { r.switchTo(i + 1 - (x = (X - sao + i % X) % X || X)); }) &&
+                (r.switchToNext = function() { r.switchTo(i + 1 + (x = (X + sao - i % X) % X || X)); }) :
+                (r.switchToPrev = function() { r.switchTo(i + 1 -  X); }) &&
+                (r.switchToNext = function() { r.switchTo(i + 1 +  X); });
+            // Return current slide index
+            r.getCurrentSlide = o.infinite ? function() { return i % N + 1 } : function() { return i + 1 };
 
             if (o.infinite) {
                 // Will do this in the future
-                l = N - o.display;
+                l = n - o.display;
             }
             else {
-                // o.reverse ?
-                //     calc = fix ?
-                //         function() { i = d > 0 ? l - x * (i == l + x) : -x * (i == x); x *= -1; } :
-                //         function() { i -= 2 * x; x *= -1; } :
-                //     calc = fix ?
-                //         !o.stepAlignmentOffset ?
-                //             // function() { I < l ? (i = l) && (x = D * fix) : i = 0; } :
-                //             function() { i = I < l ? l : 0; } :
-                //             // function() { i = i - d * ax < (!~d ? 1 : l) ? l : 0; } :
-                //             function() { i = i - x < l ? l : 0; } :
-                //         function() { i = !~d ? l : 0; };
-                calc = function() {
-                    i = i - D * d * x < (!~d ? 1 : l) ? l : 0;
-                };
+                o.reverse ?
+                    calc = fix ?
+                        // function() { i = d > 0 ? l - x * (i == l + x) : -x * (i == x); x *= -1; } :
+                        function() {
+                            // console.log(x);
+                            i = d > 0 ? l - X * (i == l + X) : -X * (i == X); X *= -1;
+                        } :
+                        function() { i -= 2 * x; x *= -1; } :
+                    calc = fix ?
+                        o.inRange ?
+                            function() { i = i - D * d * x < (!~d ? 1 : l) ? l : 0; } :
+                            function() { i = !~d ? l : 0; } :
+                        function() { i = !~d ? l : 0; };
             }
 
             t .css(si.de, -tis * i + '%'); // set tape start position
-            t .css(si.ze,  tis * N + '%'); // set tape size
-            ti.css(si.ze,  100 / N + '%'); // set tape items sizes
-
-            // Return current slide index
-            r.getCurrentSlide = o.infinite ? function() { return i % n + 1 } : function() { return i + 1 };
+            t .css(si.ze,  tis * n + '%'); // set tape size
+            ti.css(si.ze,  100 / n + '%'); // set tape items sizes
 
             // Auto play
             o.autoStart ? r.play() : 0;
@@ -264,14 +263,14 @@
             // x = X;
             i = v - 1;
 
-            (d = (i > l) - (i < 0)) ? calc() : 0; // start / end correction
+            (d = (i > l) - (i < f)) ? calc() : 0; // last / first correction
             animate();
         }
 
         function loop(ms) {
             tout = setTimeout(function() {
+                clearTimeout(tout);
                 r.switchToNext();
-                // clearTimeout(tout);
                 loop(wait());
             }, ms);
         }
