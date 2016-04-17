@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 #content {
   margin: auto;
   width: 500px;
@@ -6,6 +10,42 @@
 $stripeTag: 'ul';
 $stripeItemTag: 'li';
 $pagerItemTag: 'a';
+
+.loader {
+  position: relative;
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  border: solid 1rem #DCF9FF;
+
+  &:before, &:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: -.7rem;
+    bottom: -.7rem;
+    left: -.7rem;
+    right: -.7rem;
+    border-radius: 50%;
+    border: solid .7rem transparent;
+    border-top-color: #6BD5FF;
+  }
+
+  &:before {
+    animation: loader 1s ease-in-out infinite;
+    //animation: loader 1s linear infinite;
+  }
+
+  &:after {
+    animation: loader 1s .14s ease-in-out infinite;
+    //animation: loader 1s .14s linear infinite;
+  }
+}
+
+@keyframes loader {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .ss-wrapper {
   border: solid 1px black; //***
@@ -32,6 +72,8 @@ $pagerItemTag: 'a';
 
       box-sizing: border-box; //*
       float: left;
+
+      width: 100%;
     }
   }
 }
@@ -49,7 +91,7 @@ $pagerItemTag: 'a';
   }
 }
 
-.ss-pager {
+.ss-pagination {
   .-active {
     border: solid 1px black; //***
   }
