@@ -14,6 +14,8 @@
 //
 ////// * change o.play
 
+// Выравнивание по stepAlignment, а если false то по краях и пофиксить reverse
+
 ;+function($) {
 
     $.extend($.easing, {
@@ -27,68 +29,75 @@
     function ceil(v) { return v > (v = ~~v) ? ++v : v }
     function abs(v) { return v > 0 ? v : -v }
     function round(v) { return v - ~~v < .5 ? ~~v : ~~++v }
-    // function sign(v) { return v > 0 ? 1 : -1 }
+    function sign(v) { return v > 0 ? 1 : -1 }
     function _(v) { return prefix + '-' + v; }
 
     var prefix   = 'ss',
         defaults = {
-            style:                  _('slider'),
-            vertical:               false,
-            infinite:               false,
-            reverse:                true,
-            sync:                   false,
-            switchTime:             1000,
-            showTime:               1000,
-            animation:              'easeInOutCubic',//'easeOutBounce',//'swing',
-            display:                4,
-            startSlide:             3,
-            autoStart:              false,
+            style:                      _('slider'), // tape style class
+            vertical:                   false, // slider orientation
+            infinite:                   false, // emulate infinite tape
+            // L false
+                outOfRange:             true, // allow to go beyond the border
+                repeat:                 true, // repeat after colliding with the border
+                // L if (outOfRange && repeat && !stepAlignment)
+                    startFromBorder:    false,
+                playingReverse:         true, // reverse switching when playing
+            sync:                       false, // sliders synchronization
+            coordinateDirection:        1, // set index calculation orientation
+            switchTime:                 1000, // switch time for animation
+            showTime:                   1000, // wait time for one slide showing
+            animation:                  'easeInOutCubic',//'easeOutBounce',//'swing',
+            display:                    4, // numbers of slides on one screen
+            startSlide:                 3, // set first slide index
+            autoStart:                  false, // play after plugin load
 
             // STEP SETTINGS
-            step:                   3,
-            stepAlignment:          false,
-            stepAlignmentOffset:    0,
-            outOfRange:             true,
+            step:                       1,
+            stepAlignment:              true,
+            // L true
+                stepAlignmentOffset:    1,
 
             // WRAPPER
-            wrap:                   true,
-            wrapperStyle:           _('wrapper'),
-            stripeTag:             'ul',
-            stripeItemTag:          'li',
+            wrap:                       true,
+            wrapperStyle:               _('wrapper'),
+            stripeTag:                  'ul',
+            stripeItemTag:              'li',
 
         navigation: {
-            add:                    true,
-            reverse:                false,
-            tag:                    'nav',
-            itemTag:                'a',
-            style:                  _('nav'),
-            disableStyle:           '-disable',
-            prevStyle:              _('prev'),
-            nextStyle:              _('next'),
-            prevText:               'Previous',
-            nextText:               'Next'
+            add:                        true,
+            reverse:                    false,
+            tag:                        'nav',
+            itemTag:                    'a',
+            style:                      _('nav'),
+            disableStyle:               '-disable',
+            prevStyle:                  _('prev'),
+            nextStyle:                  _('next'),
+            prevText:                   'Previous',
+            nextText:                   'Next'
         },
 
         pagination: {
-            add:                    true,
-            tag:                    'nav',
-            itemTag:                'a',
-            style:                  _('pagination'),
-            activeStyle:            '-active',
-            stretch:                true,
-            vertical:               false,
-            numbers:                true,
-            numbersCallback:        function(i, N, o) {
-                var j = i * o.step - o.step + 1;
+            add:                        true,
+            tag:                        'nav',
+            itemTag:                    'a',
+            style:                      _('pagination'),
+            activeStyle:                '-active',
+            stretch:                    true,
+            vertical:                   false,
+            numbers:                    true,
+            numbersCallback:            function(currentPage, numberOfPages, options) {
+                // var j = i * o.step - o.step + 1;
                 // return j + '..' + (j + o.display - 1) + '|';
-                return i;
+                return currentPage;
             },
-            pageOffset:             -1,
-            switchMode:             2
+            pageLess:                   true,
+            pageOffset:                 -1,
+            switchMode:                 2
         },
 
         progress: {
-            add:                    true
+            add:                        true
         }
     };
 
@@ -109,6 +118,7 @@
             nav, // nav wrapper
             ni, // navigation item
             p, // pager
+            pn, // page numbers
             pi, // pager items array
             i, // current slide index
             I, // previous i
@@ -118,12 +128,14 @@
             x, // movement step
             X, // const of X
             ax, // abs of movement step x
+            shs, // if last slides had shown
             sao, // step correction offset value
             ppo,
             d, // forward / backward direction (1, -1)
             D, // sign of step
             f, // first possible slide index
             l, // last possible slide index
+            L,
             si, // top / left and width / height style keywords (si.de, si.ze)
             fix, // fix step if necessary
             next, // contain reference to the function of next switching
@@ -159,26 +171,27 @@
             tis = 100 / o.display;                                              // set slide width/ height
             i = I = o.startSlide - 1;                                           // set current slide
             n = N = ti.length;                                                  // set slides count
-            l = N - o.display;                                                  // last possible slide index
+            l = L = N - o.display;                                                  // last possible slide index
             x = o.step;                                                         // set movement step
             D = x > 0 ? 1 : -1;                                                 // movement direction
             ax = D * x;                                                         // absolutely step
-            x = X = ax > l ? D * l : x;                                         // fix step if it more then last slide
-            sao = (sao = o.stepAlignmentOffset) > 0 ? sao % x : ax + sao % x;   // step alignment offset
+            x = X = ax > L ? D * L : x;                                         // fix step if it more then last slide
+            sao = (sao = o.stepAlignmentOffset) >= 0 ? sao % x : ax + sao % x;   // step alignment offset
+            shs = (X - sao == o.display % X);
             ppo = o.pagination.pageOffset % X;
             //fix = (fix = l % ax) || l < ax ? fix : 0;                           // fix step is necessary
             // o.outOfRange ? (f = 1 - X) && (l = N - X) : f = 0;                  // fix step if in range
             // o.outOfRange ? (f = 1 - X) && (l = N - 1 + (X < o.display) * (X - o.display)) : f = 0;
             // o.outOfRange ? (f = 1 - o.display) && (l = X < o.display ? l + X - 1 : N - 1) : f = 0;
 
-            o.outOfRange ? X < o.display ? (f = 1 - X        ) && (l += X - 1) :
-                                           (f = 1 - o.display) && (l  = N - 1) : f = 0;
+            o.outOfRange ? X < o.display ? (f = 1 - X        ) && (l = L + X - 1) :
+                                           (f = 1 - o.display) && (l =     N - 1) : f = 0;
 
             // Add left and right navigation buttons
             if (o.navigation.add) {
                 nav = $(document.createElement(o.navigation.tag)).addClass(o.navigation.style);
                  ni = $(document.createElement(o.navigation.itemTag));
-                function play() { o.play ? setTimeout(function() { r.play(); }, o.switchTime) : 0; }
+                function play() { r.isPlaying ? setTimeout(function() { r.play(); }, o.switchTime) : 0; }
                 nav.append(ni.clone().addClass(o.navigation.prevStyle).text(o.navigation.prevText).on('click',
                     function() { clt(); r.switchToPrev(); play(); }));
                 nav.append(ni/*orig*/.addClass(o.navigation.nextStyle).text(o.navigation.nextText).on('click',
@@ -191,10 +204,10 @@
                 var arr = [],
                     tag = o.pagination.itemTag + '>',
                     // num = o.pager.numbers ? function(v) { return v + 1; } : function( ) { return '' },
-                    num = o.pagination.numbersCallback ? o.pagination.numbersCallback : function( ) { return '' };
+                    inn = o.pagination.numbersCallback ? o.pagination.numbersCallback : function( ) { return '' };
                 // Set array of pager items
-                var k = ceil(l / ax);
-                for (j = 0; j < k+1; ++j) { arr.push('<' + tag + num(j + 1, k, o) + '</' + tag); }
+                var k = ceil(l / ax) + 1 - 0 - shs;
+                for (j = 0; j < k; ++j) { arr.push('<' + tag + inn(j + 1, k, o) + '</' + tag); }
                 // Create pager and add it to wrapper
                 w.append(p = $(document.createElement(o.pagination.tag)).addClass(o.pagination.style).append(arr.join('')));
                 // Set pager items size and add events
@@ -245,30 +258,25 @@
                 l = n - o.display;
             }
             else {
-                function lim() { return d > 0 ? f : l; }
-                o.reverse ?
-                    calc = o.outOfRange ?
-                        // function() { i = d > 0 ? l - X * (i == l + X) : -X * (i == X); X *= -1; } :
-                        function() {
-                            next = d > 0 ? r.switchToPrev : r.switchToNext;
-                            // i = d > 0 ? f : l;
-                            // i = i < x ? N - o.display : 0;
-                            // i - x + o.display >= N ? i = 0 : 0;
-                            // i - x + o.display <= 0 ? i = l : 0;
-                            i = d > 0 ? 0 : l;
-                        } :
-                        function() {
-                            next = d > 0 ? r.switchToPrev : r.switchToNext;
-                            // (i == l + X || i == -X) ? (i -= 2 * d * X) && (x *= -1) : i = d > 0 ? l : 0;
-                            // i == (d > 0 ? l : f) + d * X ? (i -= 2 * d * X) && (x *= -1) : i = d > 0 ? l : 0;
-                            i = d > 0 ? l : 0;
-                        } :
-                    calc = o.outOfRange && (o.step > 1) ?
-                        function() { i = d > 0 ? 0 : l; } : // TEST IT!!!
-                        // function() { i = i - D * d * x < (!~d ? 1 : l) ? l : 0; } :
-                        // function() { i = i - D * d * x < (d > 0 ? l : 0) ? l : 0; } :
-                        function() { i = i - ax < (d > 0 ? l : 0) ? l : 0; }; // TEST IT!!!
-                        // function() { i = !~d ? l : 0; };
+                var b = function(a, b) { return d > 0 ? a : b };
+                var jump = o.repeat ?
+                    ax > 1 ?
+                        o.outOfRange ?
+                            o.stepAlignment ?
+                                function() { i = b((sao - x) % x, N + sao - x - x * shs) } : // FIX!!!
+                                o.startFromBorder ?
+                                    function() { i = b(0, L) } :
+                                    function() { i = b((i % x - x) % x, N + i % x - x) } :
+                            function() { i = i - D * d * x < b(L, 1) ? L : 0; } :
+                        function() { i = b(0, L) } :
+                    o.outOfRange ?
+                        function() { i += b(-x, x) } :
+                        function() { i = b(L, 0) };
+
+                // Navigation reverse
+                // i == (d > 0 ? l : f) + d * X ? (i -= 2 * d * X) && (x *= -1) : i = d > 0 ? l : 0;
+
+                calc = o.playingReverse ? function() { next = d > 0 ? r.switchToPrev : r.switchToNext; jump() } : jump;
             }
 
             t .css(si.de, -tis * i + '%'); // set tape start position
@@ -276,7 +284,7 @@
             ti.css(si.ze,  100 / n + '%'); // set tape items sizes
 
             // Auto play
-            o.autoStart ? r.play() : 0;
+            o.autoStart && X ? r.play() : 0;
         }
 
         function animate() {
@@ -312,13 +320,15 @@
 
         r.play = function() {
             clt();
-            o.play = true;
+            r.isPlaying = true;
+            r.isPaused = false;
             loop(o.showTime);
         };
 
         r.pause = function() {
             clt();
-            o.play = false;
+            r.isPlaying = false;
+            r.isPaused = true;
         };
 
         r.stop = function() {
