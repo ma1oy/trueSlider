@@ -60,12 +60,12 @@
             switchTime:                 500, // switch time for animation
             showTime:                   1000, // wait time for one slide showing
             animation:                  'easeInOutCubic',//'easeOutBounce',//'swing',
-            display:                    5, // numbers of slides on one screen
+            display:                    1, // numbers of slides on one screen
             startSlide:                 3, // set first slide index
             autoStart:                  false, // play after plugin load
 
             // STEP SETTINGS
-            step:                       3,
+            step:                       1,
             stepAlignment:              false,
             // L true
                 stepAlignmentOffset:    1,
@@ -336,18 +336,23 @@
             o.autoStart && X ? r.play() : 0;
         }
 
+        var II = 0;
         function animate() {
-            m[si.de] = -tis * i + '%'; // movement in a certain direction
+            // m[si.de] = -tis * i + '%'; // movement in a certain direction
             // t.stop();
             // t.animate(m, o.switchTime, o.animation); // switch animation
-            
+
             // ti.eq(I).stop();
-            // ti.eq(i).animate({opacity: 0}, o.switchTime, o.animation); // switch animation
+            m[si.de] = -tis * (I) + '%';
+            ti.eq(II).css({ position: 'relative', left: 'auto', opacity: 1 });
+            ti.eq(I).css({ background: '#fff', position: 'absolute', left: 100 / n * I + '%' });
+            ti.eq(I).animate({opacity: 0}, o.switchTime, o.animation); // switch animation
             t.css(m);
+            II = I;
         }
 
         function setSlide(v) {
-            // I = i;
+            I = i;
             // x = X;
             i = v - 1;
 
@@ -359,33 +364,26 @@
 
         function loop(ms) {
             tout = setTimeout(function() {
-                clearTimeout(tout);
+                clt();
                 // r.switchToNext();
                 next();
                 loop(wait());
             }, ms);
         }
 
-        function clt() { clearTimeout(tout); }
+        function clt() {
+            clearTimeout(tout);
+        }
 
-        r.play = function() {
+        function state(v) {
+            r.isPlaying = r.isStoped = r.isPaused = false;
+            v = true;
             clt();
-            r.isPlaying = true;
-            r.isPaused = false;
-            loop(o.showTime);
-        };
+        }
 
-        r.pause = function() {
-            clt();
-            r.isPlaying = false;
-            r.isPaused = true;
-        };
-
-        r.stop = function() {
-            r.pause();
-            i = o.startSlide - 1;
-            r.switchTo(i + 1);
-        };
+        r.play  = function() { state(r.isPlaying); loop(o.showTime); };
+        r.pause = function() { state(r.isPaused ); };
+        r.stop  = function() { state(r.isStoped ); r.switchTo((i = o.startSlide - 1) + 1); };
 
         init();
         return r;
