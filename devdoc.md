@@ -8,7 +8,7 @@
 - `tpi`  - tape items array
 - `tps`  - tape items size
 - `tpn`  - tape items number
-- `n`    - tape items number *(can be changed through calculation)*
+- `n`    - tape items number _(can be changed through calculation)_
 
 ## NAVIGATION
 - `nv`   - navigation object
@@ -29,7 +29,7 @@
 - `i`    - current slide index
 - `j`    - temporary variable
 - `X`    - movement step
-- `x`    - movement step *(can be changed through calculation)*
+- `x`    - movement step _(can be changed through calculation)_
 - `u`    - unsigned movement step
 - `d`    - movement direction
 - `f`    - first border index

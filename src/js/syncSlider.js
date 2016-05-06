@@ -25,11 +25,23 @@
         }
     });
 
+    function position(el) {
+        var a = el.getBoundingClientRect(),
+            b = el.parentNode.getBoundingClientRect();
+        return {
+            pageX: a.left - b.left,
+            pageY: a.top  - b.top
+        }
+    }
+
     // function ceil(v) { return v > ~~v ? ~~++v : v }
     function ceil(v) { return v > (v = ~~v) ? ++v : v }
-    function abs(v) { return v > 0 ? v : -v }
+    function floor(v) { return ~~v }
+    function abs(v) { return v < 0 ? -v : v }
     function round(v) { return v - ~~v < .5 ? ~~v : ~~++v }
     function sign(v) { return v > 0 ? 1 : -1 }
+    function trunc(x) { return x < 0 ? ceil(x) : floor(x) }
+    
     function _(v) { return prefix + '-' + v; }
 
     var prefix   = 'ss',
@@ -37,24 +49,24 @@
             style:                      _('slider'), // tape style class
             vertical:                   false, // slider orientation
             infinite:                   false, // emulate infinite tape
-            // L false
-                outOfRange:             true, // allow to go beyond the border
-                repeat:                 true, // repeat after colliding with the border
-                // L if (outOfRange && repeat && !stepAlignment)
+            // L if (infinite == false)
+                outOfRange:             false, // allow to go beyond the border
+                repeat:                 false, // repeat after colliding with the border
+                // L if ((outOfRange && repeat && !stepAlignment) == true)
                     startFromBorder:    false,
                 playingReverse:         true, // reverse switching when playing
             sync:                       false, // sliders synchronization
             coordinateDirection:        1, // set index calculation orientation
-            switchTime:                 1000, // switch time for animation
+            switchTime:                 500, // switch time for animation
             showTime:                   1000, // wait time for one slide showing
             animation:                  'easeInOutCubic',//'easeOutBounce',//'swing',
-            display:                    4, // numbers of slides on one screen
+            display:                    5, // numbers of slides on one screen
             startSlide:                 3, // set first slide index
             autoStart:                  false, // play after plugin load
 
             // STEP SETTINGS
-            step:                       1,
-            stepAlignment:              true,
+            step:                       3,
+            stepAlignment:              false,
             // L true
                 stepAlignmentOffset:    1,
 
@@ -108,6 +120,7 @@
             _h = 'height',
             _w = 'width',
             _ = $(this),
+            k = {},
             r = {}, // object for return
             m = {}, // top / left movement object
             o, // all options
@@ -128,9 +141,6 @@
             x, // movement step
             X, // const of X
             ax, // abs of movement step x
-            shs, // if last slides had shown
-            sao, // step correction offset value
-            ppo,
             d, // forward / backward direction (1, -1)
             D, // sign of step
             f, // first possible slide index
@@ -176,9 +186,6 @@
             D = x > 0 ? 1 : -1;                                                 // movement direction
             ax = D * x;                                                         // absolutely step
             x = X = ax > L ? D * L : x;                                         // fix step if it more then last slide
-            sao = (sao = o.stepAlignmentOffset) >= 0 ? sao % x : ax + sao % x;   // step alignment offset
-            shs = (X - sao == o.display % X);
-            ppo = o.pagination.pageOffset % X;
             //fix = (fix = l % ax) || l < ax ? fix : 0;                           // fix step is necessary
             // o.outOfRange ? (f = 1 - X) && (l = N - X) : f = 0;                  // fix step if in range
             // o.outOfRange ? (f = 1 - X) && (l = N - 1 + (X < o.display) * (X - o.display)) : f = 0;
@@ -199,6 +206,39 @@
                 w.append(nav);
             }
 
+            // Step alignment
+            var b = function(a, b) { return d > 0 ? a : b };
+            if (o.stepAlignment) {
+                var sao = o.stepAlignmentOffset;
+                sao = sao > 0 ? sao % x : ax + sao % x; // step alignment offset
+                pn = L + ax - sao; // display > step
+                var shs = (X - sao == o.display % X), // if last slides had shown
+                    ppo = sao - ax * !!sao + 1,
+                    fxf = x - sao,
+                    fxl = x + sao;
+                k.iCalcOrr = function() { i = b((sao - x) % x, N + sao - x - x * shs) };
+                k.addPageClick = function(v, e) { v += ppo; $(e).on('click', function() { r.switchTo(v) }); };
+                r.switchToPrev = function() { r.switchTo(i + 1 - (x = (fxf + i % X) % X || X)); };
+                r.switchToNext = function() { r.switchTo(i + 1 + (x = (fxl - i % X) % X || X)); }
+            }
+            else {
+                pn = L;
+                k.iCalcOrr = o.startFromBorder ?
+                    function() { i = b(0, L) } :
+                    function() { i = b((i % x - x) % x, N + i % x - x) };
+                k.addPageClick = function(v, e) { v += 1;   $(e).on('click', function() { r.switchTo(v) }); };
+                r.switchToPrev = function() { r.switchTo(i + 1 -  x); };
+                r.switchToNext = function() { r.switchTo(i + 1 +  x); }
+            }
+            pn = ceil(pn / ax) + 1;
+            next = r.switchToNext;
+
+            // Repeat and outOfRange
+            k.iCalc = o.repeat ?
+                ax < 2 ? function() { i = b(0, L) } :
+                    o.outOfRange ? k.iCalcOrr() : function() { i = i - D * d * x < b(L, 1) ? L : 0; } :
+                o.outOfRange ? function() { i += b(-x, x) } : function() { i = b(L, 0) };
+
             // Add pager
             if (o.pagination.add) {
                 var arr = [],
@@ -206,8 +246,8 @@
                     // num = o.pager.numbers ? function(v) { return v + 1; } : function( ) { return '' },
                     inn = o.pagination.numbersCallback ? o.pagination.numbersCallback : function( ) { return '' };
                 // Set array of pager items
-                var k = ceil(l / ax) + 1 - 0 - shs;
-                for (j = 0; j < k; ++j) { arr.push('<' + tag + inn(j + 1, k, o) + '</' + tag); }
+                // var k = ceil(l / ax) + 1 - shs;
+                for (j = 0; j < pn; ++j) { arr.push('<' + tag + inn(j + 1, pn, o) + '</' + tag); }
                 // Create pager and add it to wrapper
                 w.append(p = $(document.createElement(o.pagination.tag)).addClass(o.pagination.style).append(arr.join('')));
                 // Set pager items size and add events
@@ -215,41 +255,35 @@
                 var setSize = o.pagination.vertical ?
                     function(e) { $(e).css(_h, j); } :
                     function(e) { $(e).css(_w, j); };
-                var addClick = function(v, e) { $(e).on('click', function() { r.switchTo(v + 1) }); };
                 pi = p.children(o.pagination.itemTag).each(o.pagination.stretch ?
-                    function(i, e) { addClick(i * ax, e); setSize(e); } :
-                    function(i, e) { addClick(i * ax, e); });
+                    function(i, e) { k.addPageClick(i * ax, e); setSize(e); } :
+                    function(i, e) { k.addPageClick(i * ax, e); });
+                var test = ~~(o.display / 2) - 1;
                 // Set active start pager item
-                pi.eq(ceil((o.startSlide - 1) / ax)).addClass(o.pagination.activeStyle);
+                pi.eq(ceil((o.startSlide - test - 1) / ax)).addClass(o.pagination.activeStyle);
                 // Convert current slide index to pager item index if display > 1
                 var toPager = ax < 2 ?
                     function(v) { return v } :
-                    function(v) { return ceil(v / ax) }; //!!!!!!!!!!!!!!!
+                    function(v) { return ceil((v) / ax) }; //!!!!!!!!!!!!!!!
                 // Set page
                 var I_ = i;
-                function setPag(v) {
-                    pi.eq(toPager(I_)).removeClass(o.pagination.activeStyle);
+                function setPage(v) {
+                    pi.eq(toPager(I_ - test)).removeClass(o.pagination.activeStyle);
                     pi.eq(v - 1).addClass(o.pagination.activeStyle);
                     I_ = i;
                 }
                 // Return current page index
-                r.getCurrentPage = function() { return toPager(i) + 1; };
+                r.getCurrentPage = function() { return toPager(i - test) + 1; };
                 // Switching beetwin pages
                 r.switchPageTo = o.pagination.switchMode > 0 ?
                     function(v) { clearTimeout(j); j = setTimeout(function() {
-                                  setPag(v); }, o.switchTime / o.pagination.switchMode) } :
-                    function(v) { setPag(v); };
-                j = function(v) { setSlide(v); r.switchPageTo(r.getCurrentPage()); };
-            } else j = setSlide;
-
-            r.switchTo = j;
+                                  setPage(v); }, o.switchTime / o.pagination.switchMode) } :
+                    function(v) { setPage(v); };
+                r.switchTo = function(v) { setSlide(v); r.switchPageTo(r.getCurrentPage()); };
+            }
+            else r.switchTo = setSlide;
             r.setSlide = setSlide;
-            o.stepAlignment ?
-                (r.switchToPrev = function() { r.switchTo(i + 1 - (x = (X - sao + i % X) % X || X)); }) &&
-                (r.switchToNext = function() { r.switchTo(i + 1 + (x = (X + sao - i % X) % X || X)); }) :
-                (r.switchToPrev = function() { r.switchTo(i + 1 -  x); }) &&
-                (r.switchToNext = function() { r.switchTo(i + 1 +  x); });
-            next = r.switchToNext;
+
             // Return current slide index
             r.getCurrentSlide = o.infinite ? function() { return i % N + 1 } : function() { return i + 1 };
 
@@ -258,20 +292,10 @@
                 l = n - o.display;
             }
             else {
-                var b = function(a, b) { return d > 0 ? a : b };
                 var jump = o.repeat ?
-                    ax > 1 ?
-                        o.outOfRange ?
-                            o.stepAlignment ?
-                                function() { i = b((sao - x) % x, N + sao - x - x * shs) } : // FIX!!!
-                                o.startFromBorder ?
-                                    function() { i = b(0, L) } :
-                                    function() { i = b((i % x - x) % x, N + i % x - x) } :
-                            function() { i = i - D * d * x < b(L, 1) ? L : 0; } :
-                        function() { i = b(0, L) } :
-                    o.outOfRange ?
-                        function() { i += b(-x, x) } :
-                        function() { i = b(L, 0) };
+                    ax < 2 ? function() { i = b(0, L) } :
+                        o.outOfRange ? k.iCalcOrr() : function() { i = i - D * d * x < b(L, 1) ? L : 0; } :
+                    o.outOfRange ? function() { i += b(-x, x) } : function() { i = b(L, 0) };
 
                 // Navigation reverse
                 // i == (d > 0 ? l : f) + d * X ? (i -= 2 * d * X) && (x *= -1) : i = d > 0 ? l : 0;
@@ -283,17 +307,43 @@
             t .css(si.ze,  tis * n + '%'); // set tape size
             ti.css(si.ze,  100 / n + '%'); // set tape items sizes
 
+            var touchStart = 0;
+            var tapeStart = 0;
+            function handleStart(e) {
+                e.preventDefault();
+                touchStart = e.changedTouches[0].pageX;
+                tapeStart = position(t.get(0)).pageX;
+                // console.log('touchStart: ' + touchStart + ' : ' + 'tapeStart: ' + tapeStart);
+            }
+            function handleMove(e) {
+                e.preventDefault();
+                // console.log(e.touches[0].pageX);
+                // console.log(position(t.get(0)).pageX);
+                var pos = tapeStart + e.touches[0].pageX - touchStart;
+                t.css(si.de, pos);
+                // console.log(position(t.get(0)).pageX);
+                // console.log(~~(position(t.get(0)).pageX / ti.width()));
+            }
+            function handleEnd(e) {
+                e.preventDefault();
+                r.switchTo(round(-position(t.get(0)).pageX / ti.width()) + 1);
+            }
+            t.get(0).addEventListener("touchstart", handleStart, false);
+            t.get(0).addEventListener("touchmove", handleMove, false);
+            t.get(0).addEventListener("touchend", handleEnd, false);
+
             // Auto play
             o.autoStart && X ? r.play() : 0;
         }
 
         function animate() {
             m[si.de] = -tis * i + '%'; // movement in a certain direction
-            t.stop();
-            t.animate(m, o.switchTime, o.animation); // switch animation
+            // t.stop();
+            // t.animate(m, o.switchTime, o.animation); // switch animation
+            
             // ti.eq(I).stop();
             // ti.eq(i).animate({opacity: 0}, o.switchTime, o.animation); // switch animation
-            // t.css(m);
+            t.css(m);
         }
 
         function setSlide(v) {
