@@ -9,7 +9,7 @@
 
 $stripeTag: 'ul';
 $stripeItemTag: 'li';
-$pagerItemTag: 'a';
+$paginationItemTag: 'a';
 
 .loader {
   position: relative;
@@ -47,7 +47,7 @@ $pagerItemTag: 'a';
   to { transform: rotate(360deg); }
 }
 
-.ss-wrapper {
+.ts-wrapper {
   border: solid 1px black; //***
 
   position: relative;
@@ -57,32 +57,32 @@ $pagerItemTag: 'a';
   img {
     vertical-align: top; //*
   }
+}
 
-  > #{$stripeTag} {
-    //background: gray; //***
+.ts-stripe {
+  //background: gray; //***
 
+  float: left;
+  position: relative;
+  margin: 0; //*
+  padding: 0; //*
+  list-style: none;
+
+  > #{$stripeItemTag} {
+    border: solid 1px black; //***
+
+    box-sizing: border-box; //*
     float: left;
-    position: relative;
-    margin: 0; //*
-    padding: 0; //*
-    list-style: none;
 
-    > #{$stripeItemTag} {
-      border: solid 1px black; //***
-
-      box-sizing: border-box; //*
-      float: left;
-
-      width: 100%;
-    }
+    width: 100%;
   }
 }
 
-.ss-nav {
+.ts-navigation {
 
 }
 
-.ss-prev, .ss-next, .ss-pager > #{$pagerItemTag} {
+.ts-prev, .ts-next, .ts-pagination > #{$paginationItemTag} {
   //display: block;
   //float: left;
 
@@ -91,8 +91,12 @@ $pagerItemTag: 'a';
   }
 }
 
-.ss-pagination {
-  .-active {
+.ts-pagination {
+  > #{$paginationItemTag} {
+    float: left;
+  }
+
+  .ts--active {
     border: solid 1px black; //***
   }
 }

@@ -5,7 +5,8 @@
     <meta name="msapplication-tap-highlight" content="no"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>syncSlider</title>
-    <link rel="stylesheet" type="text/css" href="css/ss.css">
+    <!--<link rel="stylesheet" type="text/css" href="css/ss.css">-->
+    <link rel="stylesheet" type="text/css" href="../test/css/ss.css">
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
     <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
@@ -15,8 +16,8 @@
 <body>
 
 <div id="content">
-    <div class="ss-area">
-        <ul class="ss_main">
+    <div class="ts-area">
+        <ul class="ts-stripe">
             <li>Item 1</li>
             <li>Item 2</li>
             <li>Item 3</li>
@@ -33,16 +34,19 @@
             <li>Item 14</li>
             <li>Item 15</li>
         </ul>
-        <a onclick="ss.play()">Play</a>
-        <a onclick="ss.pause()">Pause</a>
-        <a onclick="ss.stop()">Stop</a>
+        <a onclick="ts.play()">Play</a>
+        <a onclick="ts.pause()">Pause</a>
+        <a onclick="ts.stop()">Stop</a>
     </div>
 </div>
 
 <script type="text/javascript" src="js/jquery-2.2.2.min.js"></script>
-<script type="text/javascript" src="js/syncSlider.js"></script>
+<script type="text/javascript" src="js/trueSlider.js"></script>
 <script type="text/javascript">
-    var ss = $('.ss_main').syncSlider();
+    var ts = $('.ts-stripe').trueSlider();
+    console.log(ts);
+//    ts.addStyle('ts-pagination>a',{float:null});
+//    ts.updateStyle();
 </script>
 
 </body>
