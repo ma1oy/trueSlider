@@ -38,12 +38,34 @@
         <a onclick="ts.pause()">Pause</a>
         <a onclick="ts.stop()">Stop</a>
     </div>
+    <pre class="info"></pre>
 </div>
 
 <script type="text/javascript" src="js/jquery-2.2.2.min.js"></script>
 <script type="text/javascript" src="js/trueSlider.js"></script>
 <script type="text/javascript">
-    var ts = $('.ts-stripe').trueSlider();
+    var ts = $('.ts-stripe').trueSlider({
+        onChange: function (calc) {
+            let info = {
+                timeoutId: calc.timeoutId,
+                state: calc.state,
+                currentSlideIndex: calc.currentSlideIndex,
+                previousSlideIndex: calc.previousSlideIndex,
+                repeatMovementDirection: calc.repeatMovementDirection,
+                visibleSlidesQuantity: calc.visibleSlidesQuantity,
+                realSlidesQuantity: calc.realSlidesQuantity,
+                step: calc.step,
+                currentStep: calc.currentStep,
+                stepAlignmentOffset: calc.stepAlignmentOffset,
+                firstMovementIndex: calc.firstMovementIndex,
+                lastMovementIndex: calc.lastMovementIndex,
+                lastSlideIndex: calc.lastSlideIndex,
+                pageNumbers: calc.pageNumbers,
+                paginationPageOffset: calc.paginationPageOffset,
+            };
+            $('.info').text(JSON.stringify(info, null, ' '));
+        }
+    });
     console.log(ts);
 //    ts.addStyle('ts-pagination>a',{float:null});
 //    ts.updateStyle();
